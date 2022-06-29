@@ -1,9 +1,11 @@
 package configs
 
 import (
+	"context"
 	"fmt"
 	"log"
 
+	"github.com/go-redis/redis/v9"
 	"github.com/upper/db/v4"
 	"github.com/upper/db/v4/adapter/mongo"
 )
@@ -25,3 +27,10 @@ var Connection = func() db.Session {
 func GetCollection(connection db.Session, collectionName string) db.Collection {
 	return connection.Collection(collectionName)
 }
+
+var Ctx = context.Background()
+var RDB = redis.NewClient(&redis.Options{
+	Addr:     "localhost:6379",
+	Password: "", // no password set
+	DB:       0,  // use default DB
+})

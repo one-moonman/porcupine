@@ -10,6 +10,8 @@ func main() {
 	router := gin.Default()
 
 	router.POST("/register", controllers.Register())
+	router.POST("/login", controllers.Login())
+
 	// forAccessTokenVerification := router.Group("/")
 	// forAccessTokenVerification.Use()
 	// {

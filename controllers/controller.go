@@ -3,21 +3,25 @@ package controllers
 import (
 	"bug-free-octo-broccoli/configs"
 	"bug-free-octo-broccoli/models"
+	"bug-free-octo-broccoli/utils"
+	"fmt"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 	"github.com/upper/db/v4"
-	"golang.org/x/crypto/bcrypt"
+	"gopkg.in/mgo.v2/bson"
 )
 
 var userCollection = configs.GetCollection(configs.Connection, "user")
+var Expiration int64 = 15000
 
 func Register() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		var reqBody map[string]string
 
 		if err := ctx.BindJSON(&reqBody); err != nil {
-			ctx.JSON(http.StatusBadRequest, gin.H{
+			ctx.JSON(400, gin.H{
 				"success": false,
 				"message": err.Error()})
 			return
@@ -28,13 +32,13 @@ func Register() gin.HandlerFunc {
 			"email":    reqBody["email"]})
 
 		if total, _ := res.Count(); total != 0 {
-			ctx.JSON(http.StatusBadRequest, gin.H{
+			ctx.JSON(400, gin.H{
 				"success": false,
 				"message": "Email or username already taken"})
 			return
 		}
 
-		hash, _ := cryprtPassword(reqBody["password"])
+		hash, _ := utils.CryprtPassword(reqBody["password"])
 
 		user := models.User{
 			Username: reqBody["username"],
@@ -55,12 +59,19 @@ func Register() gin.HandlerFunc {
 	}
 }
 
+type User struct {
+	ID       interface{} `bson:"_id" json:"_id"`
+	Username string      `bson:"username" json:"username"`
+	Email    string      `bson:"email" json:"email"`
+	Hash     string      `bson:"hash" json:"hash"`
+}
+
 func Login() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		var reqBody map[string]string
 
 		if err := ctx.BindJSON(&reqBody); err != nil {
-			ctx.JSON(http.StatusBadRequest, gin.H{
+			ctx.JSON(400, gin.H{
 				"success": false,
 				"message": err.Error()})
 			return
@@ -68,36 +79,58 @@ func Login() gin.HandlerFunc {
 
 		res := userCollection.Find(db.Cond{"email": reqBody["email"]})
 
-		var user models.User
+		var user User
 		if err := res.One(&user); err != nil {
-			ctx.JSON(http.StatusBadRequest, gin.H{
+			ctx.JSON(400, gin.H{
 				"success": false,
 				"message": err.Error()})
 			return
 		}
 
-		if !comparePasswordHash(user.Hash, reqBody["password"]) {
-			ctx.JSON(http.StatusUnauthorized, gin.H{
+		if !utils.ComparePasswordHash(user.Hash, reqBody["password"]) {
+			ctx.JSON(401, gin.H{
 				"success": false,
 				"message": "Invalid password credential"})
 			return
 		}
 
-		// generate token
+		userId := user.ID.(bson.ObjectId).Hex()
+		pairId := uuid.New().String()
 
+		accessToken := utils.GenerateToken(pairId, string(userId))
+		refreshToken := utils.GenerateToken(pairId, string(userId))
+
+		key := userId + "_" + pairId
+
+		err := configs.RDB.Set(configs.Ctx, key, map[string]interface{}{
+			"refreshToken": refreshToken,
+			"expiresAt":    Expiration}, 0).Err()
+		if err != nil {
+			fmt.Println(err.Error())
+		}
+
+		ctx.JSON(200, gin.H{
+			"success": true,
+			"data": map[string]string{
+				"accessToken":  accessToken,
+				"refreshToken": refreshToken}})
 	}
 }
 
-func cryprtPassword(password string) (string, error) {
-	bytes, err := bcrypt.GenerateFromPassword([]byte(password), 12)
-	return string(bytes), err
+func Logout() gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		// extract from header
+	}
 }
 
-func comparePasswordHash(password, hash string) bool {
-	err := bcrypt.CompareHashAndPassword([]byte(hash), []byte(password))
-	return err == nil
+func RefreshTokens() gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		// extract from header
+	}
 }
 
-func generateAccessToken() {
-
+func DeleteAccount() gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		// extract from header
+	}
 }
