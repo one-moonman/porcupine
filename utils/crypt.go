@@ -2,6 +2,7 @@ package utils
 
 import (
 	"log"
+	"time"
 
 	"github.com/golang-jwt/jwt/v4"
 	"golang.org/x/crypto/bcrypt"
@@ -18,7 +19,7 @@ func GenerateToken(pair, sub string) string {
 	claims := MyCustomClaims{
 		pair,
 		jwt.StandardClaims{
-			ExpiresAt: 15000,
+			ExpiresAt: time.Now().Add(5 * time.Minute).Unix(),
 			Issuer:    "test",
 			Subject:   sub,
 		},

@@ -4,13 +4,15 @@ import (
 	"bug-free-octo-broccoli/configs"
 	"bug-free-octo-broccoli/models"
 	"bug-free-octo-broccoli/utils"
+	"encoding/json"
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/golang-jwt/jwt/v4"
 	"github.com/google/uuid"
 	"github.com/upper/db/v4"
-	"gopkg.in/mgo.v2/bson"
 )
 
 var userCollection = configs.GetCollection(configs.Connection, "user")
@@ -59,13 +61,6 @@ func Register() gin.HandlerFunc {
 	}
 }
 
-type User struct {
-	ID       interface{} `bson:"_id" json:"_id"`
-	Username string      `bson:"username" json:"username"`
-	Email    string      `bson:"email" json:"email"`
-	Hash     string      `bson:"hash" json:"hash"`
-}
-
 func Login() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		var reqBody map[string]string
@@ -79,7 +74,7 @@ func Login() gin.HandlerFunc {
 
 		res := userCollection.Find(db.Cond{"email": reqBody["email"]})
 
-		var user User
+		var user models.UserDocument
 		if err := res.One(&user); err != nil {
 			ctx.JSON(400, gin.H{
 				"success": false,
@@ -94,17 +89,18 @@ func Login() gin.HandlerFunc {
 			return
 		}
 
-		userId := user.ID.(bson.ObjectId).Hex()
+		userId := user.ID.Hex()
 		pairId := uuid.New().String()
 
 		accessToken := utils.GenerateToken(pairId, string(userId))
 		refreshToken := utils.GenerateToken(pairId, string(userId))
 
 		key := userId + "_" + pairId
-
-		err := configs.RDB.Set(configs.Ctx, key, map[string]interface{}{
+		expiration := time.Now().Add(5 * time.Minute).Unix()
+		value, _ := json.Marshal(map[string]interface{}{
 			"refreshToken": refreshToken,
-			"expiresAt":    Expiration}, 0).Err()
+			"expiresAt":    expiration})
+		err := configs.RDB.Set(configs.Ctx, key, value, 0).Err()
 		if err != nil {
 			fmt.Println(err.Error())
 		}
@@ -117,9 +113,53 @@ func Login() gin.HandlerFunc {
 	}
 }
 
+func Me() gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		user, err := ctx.Get("user")
+		if !err {
+			ctx.JSON(400, gin.H{
+				"success": false,
+				"message": "User does not exist oin context"})
+			return
+		}
+		ctx.JSON(200, gin.H{
+			"success": true,
+			"data":    user})
+	}
+}
+
 func Logout() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
-		// extract from header
+		user, err := ctx.Get("user")
+		if !err {
+			ctx.JSON(400, gin.H{
+				"success": false,
+				"message": "User does not exist oin context"})
+			return
+		}
+
+		claims, err := ctx.Get("claims")
+		if !err {
+			ctx.JSON(400, gin.H{
+				"success": false,
+				"message": "Claims not in context. Login first"})
+			return
+		}
+
+		token, err := ctx.Get("token")
+		if !err {
+			ctx.JSON(400, gin.H{
+				"success": false,
+				"message": "Token not in context. Login first"})
+			return
+		}
+		key := user.(models.UserDocument).ID.Hex() + "_" + claims.(jwt.MapClaims)["pair"].(string)
+		configs.RDB.Del(configs.Ctx, key)
+		configs.RDB.SAdd(configs.Ctx, "BL_"+user.(models.UserDocument).ID.Hex(), token)
+
+		ctx.JSON(200, gin.H{
+			"success": true,
+			"message": "Loged out"})
 	}
 }
 
