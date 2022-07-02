@@ -16,7 +16,8 @@ import (
 
 type Handler struct {
 	repository storage.UserRepository
-	utils      common.Utilities
+
+	utils common.Utilities
 }
 
 func (h *Handler) Register() gin.HandlerFunc {
