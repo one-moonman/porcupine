@@ -1,4 +1,4 @@
-package utils
+package common
 
 import (
 	"log"
@@ -15,7 +15,7 @@ type MyCustomClaims struct {
 	jwt.StandardClaims
 }
 
-func GenerateToken(pair, sub string) string {
+func (util *Utilities) GenerateToken(pair, sub string) string {
 	claims := MyCustomClaims{
 		pair,
 		jwt.StandardClaims{
@@ -33,12 +33,12 @@ func GenerateToken(pair, sub string) string {
 	return ss
 }
 
-func CryprtPassword(password string) (string, error) {
+func (util *Utilities) CryprtPassword(password string) (string, error) {
 	bytes, err := bcrypt.GenerateFromPassword([]byte(password), 12)
 	return string(bytes), err
 }
 
-func ComparePasswordHash(hash, password string) bool {
+func (util *Utilities) ComparePasswordHash(hash, password string) bool {
 	err := bcrypt.CompareHashAndPassword([]byte(hash), []byte(password))
 	return err == nil
 }
