@@ -20,13 +20,15 @@ var Connection = func() db.Session {
 	if err != nil {
 		log.Fatalf("db.Open(): %q\n", err)
 	}
-	fmt.Println("connected")
+	fmt.Println("Database Connected")
 	return sess
 }()
 
 func GetCollection(connection db.Session, collectionName string) db.Collection {
 	return connection.Collection(collectionName)
 }
+
+var UserCollection = Connection.Collection("user")
 
 var Ctx = context.Background()
 var RDB = redis.NewClient(&redis.Options{
