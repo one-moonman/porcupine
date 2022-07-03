@@ -1,22 +1,13 @@
 package main
 
-import "bug-free-octo-broccoli/api"
+import (
+	"bug-free-octo-broccoli/api"
+	"bug-free-octo-broccoli/storage"
+)
 
 func main() {
-	// router := gin.Default()
-
-	// router.POST("/register", controllers.Register())
-	// router.POST("/login", controllers.Login())
-
-	// forAccessTokenVerification := router.Group("/")
-	// forAccessTokenVerification.Use(middlewares.VerifyAccessToken())
-	// {
-	// 	forAccessTokenVerification.GET("/me", controllers.Me())
-	// 	forAccessTokenVerification.POST("/logout", controllers.Logout())
-	// 	forAccessTokenVerification.DELETE("/delete")
-	// }
-
-	// router.Run()
+	defer storage.CloseJsonStorage()
+	defer storage.CloseMemoryStorage()
 	server := new(api.Server)
 	server.Run()
 }

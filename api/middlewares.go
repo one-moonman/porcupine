@@ -1,8 +1,6 @@
 package api
 
 import (
-	"bug-free-octo-broccoli/storage"
-
 	"github.com/gin-gonic/gin"
 	"github.com/go-redis/redis/v9"
 	"github.com/upper/db/v4"
@@ -55,7 +53,7 @@ func (h *Handler) VerifyAccessToken() gin.HandlerFunc {
 			return
 		}
 
-		ismember, err := storage.RDB.SIsMember(storage.Ctx, "BL_"+user.ID.Hex(), token).Result()
+		ismember, err := h.memory.SIsMember("BL_"+user.ID.Hex(), token)
 		if err != nil {
 			ctx.JSON(404, gin.H{
 				"success": false,
@@ -102,7 +100,7 @@ func (h *Handler) VerifyRefreshToken() gin.HandlerFunc {
 
 		userId := user.ID.Hex()
 		key := userId + "_" + claims["pair"].(string)
-		_, err = storage.RDB.Get(storage.Ctx, key).Result()
+		_, err = h.memory.Get(key)
 		if err == redis.Nil {
 			ctx.JSON(404, gin.H{
 				"success": false,

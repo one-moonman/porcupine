@@ -5,7 +5,6 @@ import (
 	"bug-free-octo-broccoli/model"
 	"bug-free-octo-broccoli/storage"
 	"encoding/json"
-	"fmt"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -16,8 +15,8 @@ import (
 
 type Handler struct {
 	repository storage.UserRepository
-
-	utils common.Utilities
+	memory     storage.MemoryStorage
+	utils      common.Utilities
 }
 
 func (h *Handler) Register() gin.HandlerFunc {
@@ -64,18 +63,16 @@ func (h *Handler) GenerateTokens() gin.HandlerFunc {
 		userId := user.(model.User).ID.Hex()
 		pairId := uuid.New().String()
 
-		accessToken := h.utils.GenerateToken(pairId, string(userId))
-		refreshToken := h.utils.GenerateToken(pairId, string(userId))
+		// add secret and age arguments to util functions
+		accessToken := h.utils.GenerateAccessToken(pairId, string(userId))
+		refreshToken := h.utils.GenerateRefreshToken(pairId, string(userId))
 
 		key := userId + "_" + pairId
 		expiration := time.Now().Add(5 * time.Minute).Unix()
 		value, _ := json.Marshal(map[string]interface{}{
 			"refreshToken": refreshToken,
 			"expiresAt":    expiration})
-		err := storage.RDB.Set(storage.Ctx, key, value, 0).Err()
-		if err != nil {
-			fmt.Println(err.Error())
-		}
+		h.memory.Set(key, value, 0)
 
 		ctx.JSON(200, gin.H{
 			"success": true,
@@ -111,8 +108,8 @@ func (h *Handler) Logout() gin.HandlerFunc {
 			return
 		}
 		key := user.(model.User).ID.Hex() + "_" + claims.(jwt.MapClaims)["pair"].(string)
-		storage.RDB.Del(storage.Ctx, key)
-		storage.RDB.SAdd(storage.Ctx, "BL_"+user.(model.User).ID.Hex(), token)
+		h.memory.Del(key)
+		h.memory.SAdd("BL_"+user.(model.User).ID.Hex(), token)
 
 		ctx.JSON(200, gin.H{
 			"success": true,

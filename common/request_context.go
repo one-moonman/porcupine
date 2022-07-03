@@ -1,12 +1,10 @@
 package common
 
 import (
-	"errors"
 	"net/http"
 	"strings"
 
 	"github.com/gin-gonic/gin"
-	"github.com/golang-jwt/jwt/v4"
 )
 
 type Utilities struct{}
@@ -38,19 +36,4 @@ func (util *Utilities) ExtractAuthBearerToken(ctx *gin.Context) string {
 		return ""
 	}
 	return token
-}
-
-func (util *Utilities) DecodeToken(token string) (jwt.MapClaims, error) {
-	claims := jwt.MapClaims{}
-	decodedToken, err := jwt.ParseWithClaims(token, claims, func(token *jwt.Token) (interface{}, error) {
-		return []byte("AllYourBase"), nil
-	})
-	if err != nil {
-		return nil, err
-	}
-	if !decodedToken.Valid {
-		err := errors.New("token not valid")
-		return nil, err
-	}
-	return claims, nil
 }
