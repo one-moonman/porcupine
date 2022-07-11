@@ -2,6 +2,8 @@ package storage
 
 import (
 	"context"
+	"fmt"
+	"log"
 	"time"
 
 	"github.com/go-redis/redis/v9"
@@ -17,8 +19,9 @@ var rdb = redis.NewClient(&redis.Options{
 func CloseMemoryStorage() {
 	err := rdb.Close()
 	if err != nil {
-		panic(err.Error())
+		log.Fatalf("mem.Close(): %q\n", err)
 	}
+	fmt.Println("Memory Disconnected")
 }
 
 type MemoryStorage struct{}

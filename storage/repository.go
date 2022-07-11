@@ -27,8 +27,9 @@ var connection = func() db.Session {
 func CloseJsonStorage() {
 	err := connection.Close()
 	if err != nil {
-		panic(err.Error())
+		log.Fatalf("db.Close(): %q\n", err)
 	}
+	fmt.Println("Database Disconnected")
 }
 
 type UserRepository struct{}

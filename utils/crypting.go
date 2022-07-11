@@ -1,4 +1,4 @@
-package common
+package utils
 
 import (
 	"errors"
@@ -23,7 +23,7 @@ type MyCustomClaims struct {
 	jwt.StandardClaims
 }
 
-func (util *Utilities) DecodeToken(token string) (jwt.MapClaims, error) {
+func DecodeToken(token string) (jwt.MapClaims, error) {
 	claims := jwt.MapClaims{}
 	decodedToken, err := jwt.ParseWithClaims(token, claims, func(token *jwt.Token) (interface{}, error) {
 		return []byte("AllYourBase"), nil
@@ -38,7 +38,7 @@ func (util *Utilities) DecodeToken(token string) (jwt.MapClaims, error) {
 	return claims, nil
 }
 
-func (util *Utilities) GenerateAccessToken(pair, sub string) string {
+func GenerateAccessToken(pair, sub string) string {
 	claims := MyCustomClaims{
 		pair,
 		jwt.StandardClaims{
@@ -56,7 +56,7 @@ func (util *Utilities) GenerateAccessToken(pair, sub string) string {
 	return ss
 }
 
-func (util *Utilities) GenerateRefreshToken(pair, sub string) string {
+func GenerateRefreshToken(pair, sub string) string {
 	claims := MyCustomClaims{
 		pair,
 		jwt.StandardClaims{
@@ -74,12 +74,12 @@ func (util *Utilities) GenerateRefreshToken(pair, sub string) string {
 	return ss
 }
 
-func (util *Utilities) CryprtPassword(password string) (string, error) {
+func CryprtPassword(password string) (string, error) {
 	bytes, err := bcrypt.GenerateFromPassword([]byte(password), 12)
 	return string(bytes), err
 }
 
-func (util *Utilities) ComparePasswordHash(hash, password string) bool {
+func ComparePasswordHash(hash, password string) bool {
 	err := bcrypt.CompareHashAndPassword([]byte(hash), []byte(password))
 	return err == nil
 }

@@ -1,9 +1,10 @@
 package api
 
 import (
-	"bug-free-octo-broccoli/common"
 	"bug-free-octo-broccoli/model"
 	"bug-free-octo-broccoli/storage"
+	"bug-free-octo-broccoli/utils"
+
 	"encoding/json"
 	"time"
 
@@ -14,17 +15,27 @@ import (
 )
 
 type Handler struct {
+	// primary database, repository for users
 	repository storage.UserRepository
-	memory     storage.MemoryStorage
-	utils      common.Utilities
+	// secondary database, in-memory storage for tokens
+	memory storage.MemoryStorage
 }
 
 func (h *Handler) Register() gin.HandlerFunc {
+
+	type ReqBody struct {
+		Username string `json:"username" binding:"required"`
+		Email    string ` json:"email" binding:"required"`
+		Password string ` json:"password" binding:"required"`
+	}
+
 	return func(ctx *gin.Context) {
-		reqBody := h.utils.BindBody(ctx)
+		var body ReqBody
+		ctx.BindJSON(&body)
+
 		exist, _ := h.repository.FindIfExists(db.Cond{
-			"username": reqBody["username"],
-			"email":    reqBody["email"],
+			"username": body.Username,
+			"email":    body.Email,
 		})
 		if exist {
 			ctx.JSON(400, gin.H{
@@ -34,9 +45,8 @@ func (h *Handler) Register() gin.HandlerFunc {
 			return
 		}
 
-		hash, _ := h.utils.CryprtPassword(reqBody["password"])
-
-		user, err := h.repository.Create(reqBody["username"], reqBody["email"], hash)
+		hash, _ := utils.CryprtPassword(body.Password)
+		user, err := h.repository.Create(body.Username, body.Email, hash)
 		if err != nil {
 			ctx.JSON(500, gin.H{
 				"success": false,
@@ -53,63 +63,42 @@ func (h *Handler) Register() gin.HandlerFunc {
 
 func (h *Handler) GenerateTokens() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
-		user, onContext := ctx.Get("user")
-		if !onContext {
-			ctx.JSON(400, gin.H{
-				"success": false,
-				"message": "User does not exist oin context"})
-			return
-		}
-		userId := user.(model.User).ID.Hex()
+		user := ctx.MustGet("user").(model.User)
+
+		userId := user.ID.Hex()
 		pairId := uuid.New().String()
 
 		// add secret and age arguments to util functions
-		accessToken := h.utils.GenerateAccessToken(pairId, string(userId))
-		refreshToken := h.utils.GenerateRefreshToken(pairId, string(userId))
+		accessToken := utils.GenerateAccessToken(pairId, userId)
+		refreshToken := utils.GenerateRefreshToken(pairId, userId)
 
 		key := userId + "_" + pairId
 		expiration := time.Now().Add(5 * time.Minute).Unix()
 		value, _ := json.Marshal(map[string]interface{}{
 			"refreshToken": refreshToken,
-			"expiresAt":    expiration})
+			"expiresAt":    expiration,
+		})
 		h.memory.Set(key, value, 0)
 
 		ctx.JSON(200, gin.H{
 			"success": true,
 			"data": map[string]string{
 				"accessToken":  accessToken,
-				"refreshToken": refreshToken}})
+				"refreshToken": refreshToken,
+			},
+		})
 	}
 }
 
 func (h *Handler) Logout() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
-		user, err := ctx.Get("user")
-		if !err {
-			ctx.JSON(400, gin.H{
-				"success": false,
-				"message": "User does not exist oin context"})
-			return
-		}
+		user := ctx.MustGet("user").(model.User)
+		claims := ctx.MustGet("user").(jwt.MapClaims)
+		token := ctx.MustGet("token")
 
-		claims, err := ctx.Get("claims")
-		if !err {
-			ctx.JSON(400, gin.H{
-				"success": false,
-				"message": "Claims not in context. Login first"})
-			return
-		}
-
-		token, err := ctx.Get("token")
-		if !err {
-			ctx.JSON(400, gin.H{
-				"success": false,
-				"message": "Token not in context. Login first"})
-			return
-		}
-		key := user.(model.User).ID.Hex() + "_" + claims.(jwt.MapClaims)["pair"].(string)
+		key := user.ID.Hex() + "_" + claims["pair"].(string)
 		h.memory.Del(key)
-		h.memory.SAdd("BL_"+user.(model.User).ID.Hex(), token)
+		h.memory.SAdd("BL_"+user.ID.Hex(), token)
 
 		ctx.JSON(200, gin.H{
 			"success": true,
@@ -119,15 +108,10 @@ func (h *Handler) Logout() gin.HandlerFunc {
 
 func (h *Handler) Me() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
-		user, err := ctx.Get("user")
-		if !err {
-			ctx.JSON(400, gin.H{
-				"success": false,
-				"message": "User does not exist oin context"})
-			return
-		}
+		user := ctx.MustGet("user").(model.User)
 		ctx.JSON(200, gin.H{
 			"success": true,
-			"data":    user})
+			"data":    user,
+		})
 	}
 }
