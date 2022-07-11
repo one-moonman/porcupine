@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"bug-free-octo-broccoli/configs"
 	"context"
 	"fmt"
 	"log"
@@ -10,11 +11,7 @@ import (
 )
 
 var ctx = context.Background()
-var rdb = redis.NewClient(&redis.Options{
-	Addr:     "localhost:6379",
-	Password: "", // no password set
-	DB:       0,  // use default DB
-})
+var rdb = redis.NewClient(&configs.RedisOptions)
 
 func CloseMemoryStorage() {
 	err := rdb.Close()

@@ -23,10 +23,10 @@ type MyCustomClaims struct {
 	jwt.StandardClaims
 }
 
-func DecodeToken(token string) (jwt.MapClaims, error) {
+func DecodeToken(token, signingKey string) (jwt.MapClaims, error) {
 	claims := jwt.MapClaims{}
 	decodedToken, err := jwt.ParseWithClaims(token, claims, func(token *jwt.Token) (interface{}, error) {
-		return []byte("AllYourBase"), nil
+		return []byte(signingKey), nil
 	})
 	if err != nil {
 		return nil, err
@@ -38,18 +38,18 @@ func DecodeToken(token string) (jwt.MapClaims, error) {
 	return claims, nil
 }
 
-func GenerateAccessToken(pair, sub string) string {
+func GenerateAccessToken(pair, sub, signingKey string, expiration int64) string {
 	claims := MyCustomClaims{
 		pair,
 		jwt.StandardClaims{
-			ExpiresAt: time.Now().Add(5 * time.Minute).Unix(),
+			ExpiresAt: expiration,
 			Issuer:    "test",
 			Subject:   sub,
 		},
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	ss, err := token.SignedString(mySigningKey)
+	ss, err := token.SignedString([]byte(signingKey))
 	if err != nil {
 		log.Println(err.Error())
 	}

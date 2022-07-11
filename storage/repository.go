@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"bug-free-octo-broccoli/configs"
 	"bug-free-octo-broccoli/model"
 	"fmt"
 	"log"
@@ -10,13 +11,8 @@ import (
 	"gopkg.in/mgo.v2/bson"
 )
 
-var settings = mongo.ConnectionURL{
-	Database: `test`,
-	Host:     `127.0.0.1`,
-}
-
 var connection = func() db.Session {
-	sess, err := mongo.Open(settings)
+	sess, err := mongo.Open(configs.MongoOptions)
 	if err != nil {
 		log.Fatalf("db.Open(): %q\n", err)
 	}

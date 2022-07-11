@@ -1,6 +1,7 @@
 package api
 
 import (
+	"bug-free-octo-broccoli/configs"
 	"bug-free-octo-broccoli/model"
 	"bug-free-octo-broccoli/storage"
 	"bug-free-octo-broccoli/utils"
@@ -62,18 +63,22 @@ func (h *Handler) Register() gin.HandlerFunc {
 }
 
 func (h *Handler) GenerateTokens() gin.HandlerFunc {
+
 	return func(ctx *gin.Context) {
-		user := ctx.MustGet("user").(model.User)
+		user := ctx.MustGet("user").(*model.User)
 
 		userId := user.ID.Hex()
 		pairId := uuid.New().String()
 
-		// add secret and age arguments to util functions
-		accessToken := utils.GenerateAccessToken(pairId, userId)
-		refreshToken := utils.GenerateRefreshToken(pairId, userId)
+		duration, _ := time.ParseDuration(configs.ACCESS_TOKEN_AGE)
+
+		accessToken := utils.GenerateAccessToken(pairId, userId, configs.ACCESS_TOKEN_SECRET, time.Now().Add(duration).Unix())
+
+		duration, _ = time.ParseDuration(configs.REFRESH_TOKEN_AGE)
+		expiration := time.Now().Add(duration).Unix()
+		refreshToken := utils.GenerateAccessToken(pairId, userId, configs.REFRESH_TOKEN_SECRET, expiration)
 
 		key := userId + "_" + pairId
-		expiration := time.Now().Add(5 * time.Minute).Unix()
 		value, _ := json.Marshal(map[string]interface{}{
 			"refreshToken": refreshToken,
 			"expiresAt":    expiration,
@@ -92,7 +97,7 @@ func (h *Handler) GenerateTokens() gin.HandlerFunc {
 
 func (h *Handler) Logout() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
-		user := ctx.MustGet("user").(model.User)
+		user := ctx.MustGet("user").(*model.User)
 		claims := ctx.MustGet("user").(jwt.MapClaims)
 		token := ctx.MustGet("token")
 
@@ -108,7 +113,7 @@ func (h *Handler) Logout() gin.HandlerFunc {
 
 func (h *Handler) Me() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
-		user := ctx.MustGet("user").(model.User)
+		user := ctx.MustGet("user").(*model.User)
 		ctx.JSON(200, gin.H{
 			"success": true,
 			"data":    user,

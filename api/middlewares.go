@@ -1,6 +1,7 @@
 package api
 
 import (
+	"bug-free-octo-broccoli/configs"
 	"bug-free-octo-broccoli/utils"
 	"strings"
 
@@ -58,7 +59,7 @@ func (h *Handler) VerifyAccessToken() gin.HandlerFunc {
 			return
 		}
 
-		claims, err := utils.DecodeToken(token)
+		claims, err := utils.DecodeToken(token, configs.ACCESS_TOKEN_SECRET)
 		if err != nil {
 			ctx.AbortWithStatusJSON(401, gin.H{
 				"success": false,
@@ -111,7 +112,7 @@ func (h *Handler) VerifyRefreshToken() gin.HandlerFunc {
 			return
 		}
 
-		claims, err := utils.DecodeToken(token)
+		claims, err := utils.DecodeToken(token, configs.REFRESH_TOKEN_SECRET)
 		if err != nil {
 			ctx.AbortWithStatusJSON(401, gin.H{
 				"success": false,
