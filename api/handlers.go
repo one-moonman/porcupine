@@ -63,7 +63,6 @@ func (h *Handler) Register() gin.HandlerFunc {
 }
 
 func (h *Handler) GenerateTokens() gin.HandlerFunc {
-
 	return func(ctx *gin.Context) {
 		user := ctx.MustGet("user").(*model.User)
 
@@ -107,16 +106,17 @@ func (h *Handler) Logout() gin.HandlerFunc {
 
 		ctx.JSON(200, gin.H{
 			"success": true,
-			"message": "Loged out"})
+			"message": "User:" + user.Username + " logged out",
+		})
 	}
 }
 
+// when using in production, the hash field from the user struct should not be returned for security
 func (h *Handler) Me() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
-		user := ctx.MustGet("user").(*model.User)
 		ctx.JSON(200, gin.H{
 			"success": true,
-			"data":    user,
+			"data":    ctx.MustGet("user"),
 		})
 	}
 }
